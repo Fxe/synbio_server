@@ -32,18 +32,19 @@ app.add_middleware(
 
 
 def get_service():
+    print('get_service')
     from minio import Minio
     from sqlalchemy import create_engine
     client_mysql = create_engine(
         (
-            "mysql+pymysql://root:bioseed@192.168.1.22/"
-            "anl_synbio?charset=utf8mb4"
+            "mysql+pymysql://synbio_server:synbio_server_test@172.18.0.3/"
+            "anl_synbio_test?charset=utf8mb4"
         )
     )
-    client_minio = Minio('192.168.1.22:9000',
-                         secret_key='12345678',
-                         access_key='fliu', secure=False)
-    service = SynbioService(client_minio, client_mysql)
+    client_minio = Minio('poplar.cels.anl.gov:9000',
+                         secret_key='henry-minion',
+                         access_key='henrylab', secure=False)
+    service = SynbioService(client_minio, "synbio-test", client_mysql)
 
     return service
 
