@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Depends
 from fastapi.responses import JSONResponse
 import pandas as pd
 import uuid
@@ -7,14 +7,13 @@ import io
 from fastapi.middleware.cors import CORSMiddleware
 from service import SynbioService
 
-
-description = """
+server_description = """
 SynBio API
 """
 
 app = FastAPI(
     title="SynBio",
-    description=description,
+    description=server_description,
     summary="API",
     version="0.0.1",
 )
@@ -32,6 +31,23 @@ app.add_middleware(
 )
 
 
+def get_service():
+    from minio import Minio
+    from sqlalchemy import create_engine
+    client_mysql = create_engine(
+        (
+            "mysql+pymysql://root:bioseed@192.168.1.22/"
+            "anl_synbio?charset=utf8mb4"
+        )
+    )
+    client_minio = Minio('192.168.1.22:9000',
+                         secret_key='12345678',
+                         access_key='fliu', secure=False)
+    service = SynbioService(client_minio, client_mysql)
+
+    return service
+
+
 @app.get("/whoiam")
 def get_whoiam():
     return JSONResponse(content="SynBio Server")
@@ -40,28 +56,37 @@ def get_whoiam():
 @app.post("/experiment/upload")
 async def upload_experiment(
     file: UploadFile = File(...),
-    experiment_name: str = Form(...),
-    description: str = Form(None)
+    experiment_id: str = Form(...),
+    exp_index: int = Form(1),
+    exp_type: str = Form('autoALE'),
+    start_date: str = Form('2025-04-04'),
+    lab_id: int = Form(1),
+    contact_id: int = Form(1),
+    description: str = Form(None),
+    service: SynbioService = Depends(get_service)
 ):
+    print('exp upload!')
     if not file.filename.endswith('.txt'):
         raise HTTPException(status_code=400, detail="Only .txt files are allowed")
 
     content = await file.read()
+    print(file.filename)
     try:
+        service.add_plate_data(experiment_id, exp_index, exp_type,
+                               file.filename, content,
+                               start_date,
+                               lab_id, contact_id,
+                               description=description)
         df = pd.read_csv(io.BytesIO(content), sep=",")  # assuming tab-separated text file
         print(df)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error parsing file: {e}")
+        raise HTTPException(status_code=400, detail=f"{e}")
 
-    experiment_id = str(uuid.uuid4())
+    experiment_id = experiment_id
     EXPERIMENTS[experiment_id] = {
-        "name": experiment_name,
         "description": description,
         "data": df
     }
-
-    service = SynbioService(None, None)
-    #service.etl()
 
     return {"experiment_id": experiment_id}
 
@@ -70,6 +95,64 @@ async def upload_experiment(
 async def add_lab(some_lab_parm: str = Form(...)):
     # add new strain
     return JSONResponse(content=list(EXPERIMENTS))
+
+
+@app.get("/lab")
+async def list_lab():
+    return JSONResponse(content=list(["lab1", "lab2"]))
+
+
+@app.get("/lab/{lab_id}")
+async def get_lab():
+    return JSONResponse(content=list(["lab1", "lab2"]))
+
+
+@app.post("/people")
+async def add_people(some_lab_parm: str = Form(...)):
+    # add new strain
+    return JSONResponse(content=list(EXPERIMENTS))
+
+
+@app.get("/people")
+async def list_people():
+    return JSONResponse(content=list(["lab1", "lab2"]))
+
+
+@app.get("/people/{people_id}")
+async def get_people():
+    return JSONResponse(content=list(["lab1", "lab2"]))
+
+
+@app.post("/protocol")
+async def add_protocol(some_lab_parm: str = Form(...)):
+    # add new strain
+    return JSONResponse(content=list(EXPERIMENTS))
+
+
+@app.get("/protocol")
+async def list_protocol():
+    return JSONResponse(content=list(["lab1", "lab2"]))
+
+
+@app.get("/protocol/{protocol_id}")
+async def get_protocol():
+    return JSONResponse(content=list(["lab1", "lab2"]))
+
+
+@app.post("/operation")
+async def add_operation(some_lab_parm: str = Form(...)):
+    # add new strain
+    return JSONResponse(content=list(EXPERIMENTS))
+
+
+@app.get("/operation")
+async def list_operation():
+    return JSONResponse(content=list(["lab1", "lab2"]))
+
+
+@app.get("/operation/{operation_id}")
+async def get_operation():
+    return JSONResponse(content=list(["lab1", "lab2"]))
 
 
 @app.post("/strain")
