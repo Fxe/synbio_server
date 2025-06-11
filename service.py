@@ -15,16 +15,22 @@ class SynbioService:
                        lab_id, contact_id,
                        auto_fill=True, description='', operation_id=None,
                        plate_id=None, plate_index=None, plate_transfer=None, plate_timestamp=None):
+
+        print(exp_id, exp_index, exp_type, filename, data_well, start_date)
+        print(lab_id, contact_id, auto_fill, description)
+
         bucket_name = self.minio_bucket
         object_name = f'/exp/{exp_id}/plate/{filename}'
+
+        print('bucket', bucket_name, 'object', object_name)
 
         try:
             stat = self.minio.stat_object(bucket_name, object_name)
             print(stat)
             raise FileExistsError(f"Object '{object_name}' already exists in bucket '{bucket_name}'.")
 
-        except:
-            pass
+        except S3Error as ex_s3:
+            print(ex_s3)
 
         self.minio.put_object(bucket_name, object_name,
                               io.BytesIO(data_well),

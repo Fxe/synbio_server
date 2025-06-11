@@ -35,18 +35,17 @@ def get_service():
     print('get_service')
     from minio import Minio
     from sqlalchemy import create_engine
-    client_mysql = create_engine(
-        (
-            "mysql+pymysql://synbio_server:synbio_server_test@172.18.0.3/"
-            "anl_synbio_test?charset=utf8mb4"
-        )
-    )
-    client_minio = Minio('poplar.cels.anl.gov:9000',
-                         secret_key='henry-minion',
-                         access_key='henrylab', secure=False)
-    service = SynbioService(client_minio, "synbio-test", client_mysql)
+    import yaml
 
-    return service
+    # Load the YAML file
+    with open("config.yaml", "r") as file:
+        config = yaml.safe_load(file)
+        client_mysql = create_engine(config['sql'])
+        client_minio = Minio(config['minio']['host'],
+                             secret_key=str(config['minio']['secret']),
+                             access_key=str(config['minio']['access']), secure=False)
+        service = SynbioService(client_minio, config['minio']['bucket'], client_mysql)
+        return service
 
 
 @app.get("/whoiam")

@@ -346,6 +346,7 @@ class EtlExperiment:
             columns={'plate_name': 'id', 'experiment': 'experiment_id'}, inplace=True
         )
 
+        print(plates)
         plates.to_sql('plate', self.engine, index=False, if_exists='append')
 
         # 2) Samples and associated measurements
@@ -368,6 +369,7 @@ class EtlExperiment:
                 'parent_id': 'parent_sample_name'
             }, inplace=True)
 
+        print(samples)
         samples.to_sql('sample', self.engine, index=False, if_exists='append')
 
         measurements = sample_meas[
@@ -378,6 +380,7 @@ class EtlExperiment:
             inplace=True
         )
 
+        print(measurements)
         measurements.to_sql('measurement', self.engine, index=False, if_exists='append')
 
         sample_names = tuple(sample_meas['sample_name'])
@@ -391,6 +394,7 @@ class EtlExperiment:
             columns={'OD': 'od'}
         )
 
+        print(od_meas)
         od_meas.to_sql('od_measurement', self.engine, index=False, if_exists='append')
 
         return data
