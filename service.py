@@ -27,7 +27,7 @@ class SynbioService:
         try:
             stat = self.minio.stat_object(bucket_name, object_name)
             print(stat)
-            raise FileExistsError(f"Object '{object_name}' already exists in bucket '{bucket_name}'.")
+            #raise FileExistsError(f"Object '{object_name}' already exists in bucket '{bucket_name}'.")
 
         except S3Error as ex_s3:
             print(ex_s3)
@@ -89,6 +89,30 @@ class SynbioService:
             response.close()
             response.release_conn()
 
+    def lab_list(self):
+        return pd.read_sql("SELECT * FROM lab", self.engine)
+
+    def lab_get(self):
+        pass
+
+    def lab_add(self):
+        pass
+
+    def lab_remove(self):
+        pass
+
+    def people_list(self):
+        return pd.read_sql("SELECT * FROM people", self.engine)
+
+    def people_get(self):
+        pass
+
+    def people_add(self):
+        pass
+
+    def people_remove(self):
+        pass
+
     def add_operation(self, operation_id, protocol_id, lab_id, contact_id, start_date,
                       fail_on_exist=True):
         operation_dict = {
@@ -126,6 +150,68 @@ class SynbioService:
             raise ValueError('Duplicate Operation')
         if ct == 0:
             new_exp_df.to_sql('experiment', self.engine, index=False, if_exists='append')
+
+    def query_od(self, experiment_id, strain_id):
+        """
+        Queries db for all samples from specified experiment and returns all
+        associated od_measurements as pandas DataFrame. Plots all samples of
+        specified strain_id.
+
+        Args:
+            experiment_id (str): Experiment id. Must be in db.
+            strain_id (str): Strain id. Must be in db.
+        Returns:
+            DataFrame
+        """
+
+        # Check validity of passed arguments
+        db_experiments = pd.read_sql(
+            "SELECT experiment.id FROM experiment", self.engine
+        )['id'].to_list()
+
+        db_strains = pd.read_sql(
+            "SELECT strain.id FROM strain", self.engine
+        )['id'].to_list()
+
+        print('!')
+        print(db_experiments)
+        print(db_strains)
+
+        if experiment_id not in db_experiments or int(strain_id) not in db_strains:
+            print(f"Check if experiment and strain are registered in the db.")
+            return None
+
+        # Hardcoded query. This can be made more flexible later.
+        query = """
+        SELECT 
+            experiment.id,
+            sample.name, sample.passage, 
+            sample.strain_id, strain.long_name,
+            sample.growth_condition_id, growth_condition.carbon_source,
+            measurement.type,
+            od_measurement.datetime, od_measurement.od, od_measurement.background
+        FROM 
+            experiment
+            INNER JOIN sample ON sample.experiment_id = experiment.id
+            INNER JOIN measurement ON measurement.sample_id = sample.name
+            INNER JOIN od_measurement ON od_measurement.measurement_id = measurement.id
+            INNER JOIN strain ON strain.id = sample.strain_id
+            INNER JOIN growth_condition ON growth_condition.id = sample.growth_condition_id
+
+        WHERE 
+            (experiment.id=%(experiment)s) AND (sample.strain_id=%(strain)s)
+        """
+
+        selection = pd.read_sql(
+            query, self.engine, params={'experiment': experiment_id, 'strain': str(strain_id)}
+        ).rename(
+            columns={'id': 'experiment_id',
+                     'name': 'sample_name',
+                     'type': 'measurement_type',
+                     'long_name': 'strain_name'}
+        )
+
+        return selection
 
     def etl(self):
         # minio

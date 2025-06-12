@@ -347,7 +347,12 @@ class EtlExperiment:
         )
 
         print(plates)
-        plates.to_sql('plate', self.engine, index=False, if_exists='append')
+        plate_id = list(plates['id'])[0]
+        print('plate ID:', plate_id)
+        ct = pd.read_sql(f"SELECT * FROM plate WHERE id = '{plate_id}'",
+                         self.engine).shape[0]
+        if ct == 0:
+            plates.to_sql('plate', self.engine, index=False, if_exists='append')
 
         # 2) Samples and associated measurements
         # Each sample has a measurement of type 'growth' to which all od_measurements map.
@@ -369,6 +374,10 @@ class EtlExperiment:
                 'parent_id': 'parent_sample_name'
             }, inplace=True)
 
+        sample_ids = set(pd.read_sql(f"SELECT name FROM sample", self.engine)['name'])
+
+        print(samples)
+        samples = samples[~samples['name'].isin(sample_ids)]
         print(samples)
         samples.to_sql('sample', self.engine, index=False, if_exists='append')
 

@@ -91,6 +91,17 @@ async def upload_experiment(
     return {"experiment_id": experiment_id}
 
 
+@app.get("/experiment/{exp_id}/strain/{strain_id}/query_od")
+async def experiment_query_od(
+    exp_id: str,
+    strain_id: str,
+    service: SynbioService = Depends(get_service)
+):
+    print(exp_id, strain_id)
+    res = service.query_od(exp_id, strain_id)
+    return JSONResponse(content=res.to_json())
+
+
 @app.post("/lab")
 async def add_lab(some_lab_parm: str = Form(...)):
     # add new strain
@@ -98,8 +109,10 @@ async def add_lab(some_lab_parm: str = Form(...)):
 
 
 @app.get("/lab")
-async def list_lab():
-    return JSONResponse(content=list(["lab1", "lab2"]))
+async def list_lab(
+    service: SynbioService = Depends(get_service)
+):
+    return JSONResponse(content=service.lab_list().to_json())
 
 
 @app.get("/lab/{lab_id}")
@@ -114,8 +127,10 @@ async def add_people(some_lab_parm: str = Form(...)):
 
 
 @app.get("/people")
-async def list_people():
-    return JSONResponse(content=list(["lab1", "lab2"]))
+async def list_people(
+    service: SynbioService = Depends(get_service)
+):
+    return JSONResponse(content=service.people_list().to_json())
 
 
 @app.get("/people/{people_id}")
